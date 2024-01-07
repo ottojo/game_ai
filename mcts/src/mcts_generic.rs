@@ -13,37 +13,87 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 
-static mut NEXT_ID: i32 = 1;
-
 #[derive(Clone)]
 pub struct GenericMonteCarloTreeSearchAi<Rules: GameRules> {
     // TODO: should MCTS be a trait???
 
     // TODO: Persist tree
     // tree: Rc<RefCell<Tree>>,
-    search_duration: Duration,
-    rules: Rules,
+    stop_condition: StopCondition,
+    last_tree: Rc<RefCell<Tree<Rules>>>,
+    next_id: i32,
 }
 
 impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
-    pub fn new(duration: Duration, rules: Rules) -> GenericMonteCarloTreeSearchAi<Rules> {
+    pub fn new(stop_condition: StopCondition) -> GenericMonteCarloTreeSearchAi<Rules> {
         GenericMonteCarloTreeSearchAi {
-            // tree
-            search_duration: duration,
-            rules,
+            stop_condition,
+            last_tree: Default::default(),
+            next_id: 1,
         }
     }
 }
 
-pub struct DebugData {
-    pub dot_graph: Graph,
+#[derive(Clone)]
+pub enum StopCondition {
+    Iterations(usize),
+    Time(Duration),
 }
 
 impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
-    // TODO: No need to take ownership of state if it already exists in tree. Maybe require Clone for state?
-    pub fn best_action(&self, state: Rules::State) -> (Rules::Action, DebugData) {
-        let tree: Rc<RefCell<Tree<Rules>>> = Rc::new(RefCell::new(Tree {
-            state,
+    fn do_mcts_iteration(&mut self, tree: Rc<RefCell<Tree<Rules>>>) {
+        let selected_node = selection(tree);
+        let new_child = self.expansion(selected_node);
+        let result = rollout(Rc::clone(&new_child));
+        new_child.borrow_mut().rewards += &result;
+        new_child.borrow_mut().playouts_from_here += 1.0;
+        backup(Rc::clone(&new_child), result);
+    }
+
+    fn expansion(&mut self, tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell<Tree<Rules>>> {
+        if tree.borrow().state.is_final() {
+            // Can not expand a final state, so just do trivial rollout and backpropagation
+            return tree;
+        }
+
+        // Choose random move that has not been explored yet
+        let mut possible_moves = tree.borrow().state.get_actions();
+        possible_moves.retain(|m| !tree.borrow().children.contains_key(m));
+        assert!(!possible_moves.is_empty());
+
+        let random_new_move: Rules::Action = possible_moves
+            .choose(&mut rand::thread_rng())
+            .unwrap()
+            .clone();
+
+        let new_state = Rules::play(&tree.borrow().state, &random_new_move);
+
+        let child = Rc::new(RefCell::new(Tree {
+            state: new_state,
+            rewards: Rewards {
+                player_0: 0.0,
+                player_1: 0.0,
+            },
+            playouts_from_here: 0.0,
+            children: HashMap::new(),
+            parent: Some(Rc::downgrade(&tree)),
+            id: self.next_id,
+        }));
+
+        self.next_id += 1;
+
+        tree.borrow_mut()
+            .children
+            .insert(random_new_move, Rc::clone(&child));
+
+        child
+    }
+}
+
+impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
+    fn determine_next_move(&mut self, state: &Rules::State) -> Rules::Action {
+        self.last_tree = Rc::new(RefCell::new(Tree {
+            state: state.clone(),
             rewards: Rewards {
                 player_0: 0.0,
                 player_1: 0.0,
@@ -54,28 +104,23 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
             id: 0,
         }));
 
-        //for _i in 0..100000 {
-        //    do_mcts_iteration(Rc::clone(&tree));
-        //}
-
-        let start = Instant::now();
-        while start.elapsed() < self.search_duration {
-            do_mcts_iteration(Rc::clone(&tree));
+        match self.stop_condition {
+            StopCondition::Iterations(iterations) => {
+                for _i in 0..iterations {
+                    self.do_mcts_iteration(Rc::clone(&self.last_tree));
+                }
+            }
+            StopCondition::Time(duration) => {
+                let start = Instant::now();
+                while start.elapsed() < duration {
+                    self.do_mcts_iteration(Rc::clone(&self.last_tree));
+                }
+            }
         }
 
-        let best_move = tree.borrow().select_best_next_move();
-        (
-            best_move,
-            DebugData {
-                dot_graph: print_dot(Rc::clone(&tree)),
-            },
-        )
-    }
-}
+        let best_move = self.last_tree.borrow().select_best_next_move();
 
-impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
-    fn determine_next_move(&mut self, gamestate: &Rules::State) -> Rules::Action {
-        self.best_action(gamestate.clone()).0
+        best_move
     }
 
     fn name(&self) -> String {
@@ -83,8 +128,7 @@ impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
     }
 }
 
-#[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Tree<Rules: GameRules> {
     state: Rules::State,
     rewards: Rewards,
@@ -92,6 +136,19 @@ struct Tree<Rules: GameRules> {
     children: HashMap<Rules::Action, Rc<RefCell<Tree<Rules>>>>,
     parent: Option<Weak<RefCell<Tree<Rules>>>>,
     id: i32,
+}
+
+impl<Rules: GameRules> Default for Tree<Rules> {
+    fn default() -> Self {
+        Self {
+            state: Default::default(),
+            rewards: Default::default(),
+            playouts_from_here: Default::default(),
+            children: Default::default(),
+            parent: Default::default(),
+            id: Default::default(),
+        }
+    }
 }
 
 impl<Rules: GameRules> Tree<Rules> {
@@ -124,33 +181,15 @@ impl<Rules: GameRules> Tree<Rules> {
     }
 }
 
-fn do_mcts_iteration<Rules: GameRules>(tree: Rc<RefCell<Tree<Rules>>>) {
-    //let selected_node = selection(tree);
-    let selected_node = recursive_selection(tree);
-    let new_child = expansion(selected_node);
-    let result = rollout(Rc::clone(&new_child));
-    new_child.borrow_mut().rewards += &result;
-    new_child.borrow_mut().playouts_from_here += 1.0;
-    backup(Rc::clone(&new_child), result);
-}
-
-#[allow(unused)]
 fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell<Tree<Rules>>> {
-    /*
-       The selection phase traverses the tree level by level, each time
-       selecting a node based on stored statistics like ”number of visits” or ”total
-       reward”. The rule by which the algorithm selects is called the tree policy.
-       Selection stops when a node is reached that is not fully explored yet, i.e.
-       not all possible moves have been expanded to new nodes yet.
-    */
+    // Select node to expand by tree policy, in this case recursively max UCB1 value
 
     loop {
-        if !tree.borrow().is_fully_explored() {
+        if tree.borrow().state.is_final() {
+            // Final state can not be expanded
             return tree;
         }
-        if tree.borrow().state.is_final() {
-            //println!("Selection reached final state");
-            // TODO: return none
+        if !tree.borrow().is_fully_explored() {
             return tree;
         }
 
@@ -180,57 +219,6 @@ fn recursive_selection<Rules: GameRules>(
     let best_move = tree.borrow().select_best_next_move();
     let max_ucb1_child = Rc::clone(tree.borrow().children.get(&best_move).unwrap());
     recursive_selection(max_ucb1_child)
-}
-
-fn expansion<Rules: GameRules>(tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell<Tree<Rules>>> {
-    /*
-       The expansion step consists of adding one or multiple new
-       child nodes to the final selected node.
-    */
-
-    //assert!(!tree.borrow().state.is_final());
-    if tree.borrow().state.is_final(){
-        return tree;
-    }
-
-
-    let mut possible_moves = tree.borrow().state.get_actions();
-    possible_moves.retain(|m| !tree.borrow().children.contains_key(m));
-
-    /*
-    if possible_moves.is_empty(){
-        //println!("Tries to expand node with no possible moves");
-        return tree;
-    }
-    */
-
-    assert!(!possible_moves.is_empty()); // TODO: This fails
-    let random_new_move: Rules::Action = possible_moves
-        .choose(&mut rand::thread_rng())
-        .unwrap()
-        .clone();
-
-    let new_state = Rules::play(&tree.borrow().state, &random_new_move);
-
-    let child = Rc::new(RefCell::new(Tree {
-        state: new_state,
-        rewards: Rewards {
-            player_0: 0.0,
-            player_1: 0.0,
-        },
-        playouts_from_here: 0.0,
-        children: HashMap::new(),
-        parent: Some(Rc::downgrade(&tree)),
-        id: unsafe { NEXT_ID },
-    }));
-
-    unsafe { NEXT_ID += 1 };
-
-    tree.borrow_mut()
-        .children
-        .insert(random_new_move, Rc::clone(&child));
-
-    child
 }
 
 fn random_rollout<Rules: GameRules>(initial_state: &Rules::State) -> Rewards {
@@ -266,80 +254,83 @@ fn backup<Rules: GameRules>(child: Rc<RefCell<Tree<Rules>>>, result: Rewards) {
     }
 }
 
-fn print_dot<Rules: GameRules>(tree: Rc<RefCell<Tree<Rules>>>) -> Graph {
-    let mut layer = vec![tree];
-    let mut layer_index = 0;
+impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
+    /// Get graphviz representation of last search tree
+    pub fn get_last_graphviz(&self) -> Graph {
+        let mut layer = vec![Rc::clone(&self.last_tree)];
+        let mut layer_index = 0;
 
-    let mut graph = graph!(strict di "mcts_tree");
+        let mut graph = graph!(strict di "mcts_tree");
 
-    while !layer.is_empty() {
-        let mut subgraph = subgraph!(format!("depth_{}", layer_index));
-        subgraph.stmts.push(attr!("rank", "same").into());
+        while !layer.is_empty() {
+            let mut subgraph = subgraph!(format!("depth_{}", layer_index));
+            subgraph.stmts.push(attr!("rank", "same").into());
 
-        for node in layer.iter() {
-            let node_name = format!("state_{}", node.borrow().id);
-            let node_tooltip = format!("\"{:?}\"", node.borrow().state);
-            let mut dot_node = node!(node_name; attr!("tooltip", node_tooltip));
+            for node in layer.iter() {
+                let node_name = format!("state_{}", node.borrow().id);
+                let node_tooltip = format!("\"{:?}\"", node.borrow().state);
+                let mut dot_node = node!(node_name; attr!("tooltip", node_tooltip));
 
-            let parent_playouts: Option<f32> = node
-                .borrow()
-                .parent
-                .as_ref()
-                .map(|parent| parent.upgrade().unwrap().borrow().playouts_from_here);
-            let c = 1.0;
-            let incoming_player = node.borrow().state.incoming_player();
-            let ucb1 = parent_playouts.map(|parent_playouts| {
-                node.borrow().rewards.for_player(&incoming_player)
-                    / node.borrow().playouts_from_here
-                    + c * (2.0 * parent_playouts.ln() / node.borrow().playouts_from_here).sqrt()
-            });
+                let parent_playouts: Option<f32> = node
+                    .borrow()
+                    .parent
+                    .as_ref()
+                    .map(|parent| parent.upgrade().unwrap().borrow().playouts_from_here);
+                let c = 1.0;
+                let incoming_player = node.borrow().state.incoming_player();
+                let ucb1 = parent_playouts.map(|parent_playouts| {
+                    node.borrow().rewards.for_player(&incoming_player)
+                        / node.borrow().playouts_from_here
+                        + c * (2.0 * parent_playouts.ln() / node.borrow().playouts_from_here).sqrt()
+                });
 
-            let node_label = format!(
-                "\"{}Win/{}Sim ({:.1})\"",
-                node.borrow().rewards.player_0,
-                node.borrow().playouts_from_here,
-                ucb1.unwrap_or(-1.0)
-            );
-            dot_node.attributes.push(attr!("label", node_label));
+                let node_label = format!(
+                    "\"{}Win/{}Sim ({:.1})\"",
+                    node.borrow().rewards.player_0,
+                    node.borrow().playouts_from_here,
+                    ucb1.unwrap_or(-1.0)
+                );
+                dot_node.attributes.push(attr!("label", node_label));
 
-            if node.borrow().is_fully_explored() {
-                dot_node.attributes.push(attr!("penwidth", 3));
-            }
+                if node.borrow().is_fully_explored() {
+                    dot_node.attributes.push(attr!("penwidth", 3));
+                }
 
-            if node.borrow().state.is_final() {
-                let reward = node.borrow().state.reward();
-                dot_node.attributes.push(attr!("style", "filled"));
+                if node.borrow().state.is_final() {
+                    let reward = node.borrow().state.reward();
+                    dot_node.attributes.push(attr!("style", "filled"));
 
-                if reward.player_0 > reward.player_1 {
-                    dot_node.attributes.push(attr!("fillcolor", "greenyellow"));
-                } else if reward.player_1 > reward.player_0 {
-                    dot_node.attributes.push(attr!("fillcolor", "red"));
-                } else {
-                    dot_node.attributes.push(attr!("fillcolor", "yellow"));
+                    if reward.player_0 > reward.player_1 {
+                        dot_node.attributes.push(attr!("fillcolor", "greenyellow"));
+                    } else if reward.player_1 > reward.player_0 {
+                        dot_node.attributes.push(attr!("fillcolor", "red"));
+                    } else {
+                        dot_node.attributes.push(attr!("fillcolor", "yellow"));
+                    }
+                }
+                subgraph.stmts.push(dot_node.into());
+
+                for (action, child) in node.borrow().children.iter() {
+                    let child_name = format!("state_{}", child.borrow().id);
+                    let tooltip = format!("\"{:?}\"", action);
+                    graph.add_stmt(
+                        edge!(node_id!(node_name) => node_id!(child_name); attr!("tooltip", tooltip))
+                            .into(),
+                    );
                 }
             }
-            subgraph.stmts.push(dot_node.into());
 
-            for (action, child) in node.borrow().children.iter() {
-                let child_name = format!("state_{}", child.borrow().id);
-                let tooltip = format!("\"{:?}\"", action);
-                graph.add_stmt(
-                    edge!(node_id!(node_name) => node_id!(child_name); attr!("tooltip", tooltip))
-                        .into(),
-                );
+            let mut next_layer = vec![];
+            for node in layer {
+                next_layer.extend(node.borrow().children.values().map(Rc::clone))
             }
+
+            graph.add_stmt(subgraph.into());
+
+            layer_index += 1;
+            layer = next_layer;
         }
 
-        let mut next_layer = vec![];
-        for node in layer {
-            next_layer.extend(node.borrow().children.values().map(Rc::clone))
-        }
-
-        graph.add_stmt(subgraph.into());
-
-        layer_index += 1;
-        layer = next_layer;
+        graph
     }
-
-    graph
 }

@@ -42,9 +42,8 @@ impl MainState {
             cell_size: 40.0,
             cell_aspect_ratio: 0.5,
             board_position: Vec2::new(0.0, 0.0),
-            ai: Box::new(GenericMonteCarloTreeSearchAi::new(
-                Duration::from_millis(5000),
-                HexxagonRules {},
+            ai: Box::new(GenericMonteCarloTreeSearchAi::<HexxagonRules>::new(
+                mcts::StopCondition::Time(Duration::from_millis(5000)),
             )),
         }
     }

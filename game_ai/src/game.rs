@@ -15,7 +15,7 @@ pub trait GameStateTrait<Action>: Default + Clone + core::fmt::Debug {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct Rewards {
     pub player_0: f32,
     pub player_1: f32,

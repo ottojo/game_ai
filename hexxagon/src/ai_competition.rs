@@ -30,8 +30,11 @@ fn main() {
     let mut pearls_wins = 0;
     let mut rubies_wins = 0;
 
-    let create_pearls_ai =
-        || GenericMonteCarloTreeSearchAi::new(Duration::from_millis(100), HexxagonRules {});
+    let create_pearls_ai = || {
+        GenericMonteCarloTreeSearchAi::<HexxagonRules>::new(mcts::StopCondition::Time(
+            Duration::from_millis(100),
+        ))
+    };
     let create_rubies_ai = || RandomAi {};
 
     for _i in (0..20).progress() {
