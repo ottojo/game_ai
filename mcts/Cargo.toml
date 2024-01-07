@@ -1,0 +1,15 @@
+[package]
+name = "mcts"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+game_ai = { path = "../game_ai" }
+graphviz-rust = "0.7.0"
+itertools = "0.12.0"
+rand = "0.8.5"
+
+[dev-dependencies]
+tic_tac_toe = { path = "../tic_tac_toe" }
