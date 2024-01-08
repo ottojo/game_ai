@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use game_ai::GameAi;
-use hexxagonlib::game::{self, rules::HexxagonRules, GameResult, GameState, MoveResult, Player};
+use hexxagon_lib::game::{self, rules::HexxagonRules, GameResult, GameState, MoveResult, Player};
 use indicatif::ProgressIterator;
 use mcts::GenericMonteCarloTreeSearchAi;
 use random_ai::RandomAi;

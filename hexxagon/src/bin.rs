@@ -3,11 +3,11 @@ use std::time::Duration;
 use game_ai::GameAi;
 use ggez::glam::Vec2;
 use mcts::GenericMonteCarloTreeSearchAi;
-//use hexxagonlib::ai::HexxagonAi;
-use hexxagonlib::game::CellState;
-use hexxagonlib::game::GameResult;
-use hexxagonlib::game::GameState;
-use hexxagonlib::game::Player;
+//use hexxagon_lib::ai::HexxagonAi;
+use hexxagon_lib::game::CellState;
+use hexxagon_lib::game::GameResult;
+use hexxagon_lib::game::GameState;
+use hexxagon_lib::game::Player;
 
 use ggez::event;
 use ggez::glam::*;
@@ -15,10 +15,10 @@ use ggez::graphics::DrawParam;
 use ggez::graphics::TextLayout;
 use ggez::graphics::{self, Color};
 use ggez::Context;
-use hexxagonlib::game::rules::HexxagonRules;
-use hexxagonlib::hexgrid::AxialVector;
+use hexxagon_lib::game::rules::HexxagonRules;
+use hexxagon_lib::hexgrid::AxialVector;
 
-use hexxagonlib::game::MoveResult;
+use hexxagon_lib::game::MoveResult;
 
 enum UIState {
     SelectingSource,

@@ -78,6 +78,7 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
             children: HashMap::new(),
             parent: Some(Rc::downgrade(&tree)),
             id: self.next_id,
+            fully_explored_cache: false,
         }));
 
         self.next_id += 1;
@@ -102,6 +103,7 @@ impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
             children: HashMap::new(),
             parent: None,
             id: 0,
+            fully_explored_cache: false,
         }));
 
         match self.stop_condition {
@@ -136,6 +138,7 @@ struct Tree<Rules: GameRules> {
     children: HashMap<Rules::Action, Rc<RefCell<Tree<Rules>>>>,
     parent: Option<Weak<RefCell<Tree<Rules>>>>,
     id: i32,
+    fully_explored_cache: bool,
 }
 
 impl<Rules: GameRules> Default for Tree<Rules> {
@@ -147,16 +150,22 @@ impl<Rules: GameRules> Default for Tree<Rules> {
             children: Default::default(),
             parent: Default::default(),
             id: Default::default(),
+            fully_explored_cache: false,
         }
     }
 }
 
 impl<Rules: GameRules> Tree<Rules> {
     /// Returns true if a child exists for every possible move.
-    #[allow(unused)]
-    fn is_fully_explored(&self) -> bool {
+    fn is_fully_explored(&mut self) -> bool {
+        if self.fully_explored_cache {
+            return true;
+        }
+
         let all_moves = self.state.get_actions();
-        self.children.len() == all_moves.len()
+        let explored = self.children.len() == all_moves.len();
+        self.fully_explored_cache = explored;
+        explored
     }
 
     /// Selects child with max UCB1 score
@@ -164,10 +173,11 @@ impl<Rules: GameRules> Tree<Rules> {
         assert!(!self.children.is_empty());
         let c = 1.0;
         let parent_playouts = self.playouts_from_here;
+        let player = self.state.next_player();
         let ucb1 = |child: &Rc<RefCell<Tree<Rules>>>| -> f32 {
-            child.borrow().rewards.for_player(&self.state.next_player())
-                / child.borrow().playouts_from_here
-                + c * (2.0 * parent_playouts.ln() / child.borrow().playouts_from_here).sqrt()
+            let child_playouts = child.borrow().playouts_from_here;
+            child.borrow().rewards.for_player(&player) / child_playouts
+                + c * (2.0 * parent_playouts.ln() / child_playouts).sqrt()
         };
         self.children
             .iter()
@@ -183,13 +193,12 @@ impl<Rules: GameRules> Tree<Rules> {
 
 fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell<Tree<Rules>>> {
     // Select node to expand by tree policy, in this case recursively max UCB1 value
-
     loop {
         if tree.borrow().state.is_final() {
             // Final state can not be expanded
             return tree;
         }
-        if !tree.borrow().is_fully_explored() {
+        if !tree.borrow_mut().is_fully_explored() {
             return tree;
         }
 
@@ -198,27 +207,6 @@ fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell
         let max_ucb1_child = Rc::clone(tree.borrow().children.get(&best_move).unwrap());
         tree = max_ucb1_child;
     }
-}
-
-fn recursive_selection<Rules: GameRules>(
-    tree: Rc<RefCell<Tree<Rules>>>,
-) -> Rc<RefCell<Tree<Rules>>> {
-    if tree.borrow().state.is_final() {
-        // Final state can not be expanded
-        return tree;
-    }
-
-    if !tree.borrow().is_fully_explored() {
-        return tree;
-    }
-
-    // TODO: It seems this just goes in depth every time? and finds no loss at all in first round?
-    // Never chooses entirely unexplored child!
-
-    // Not final, fully explored -> has children
-    let best_move = tree.borrow().select_best_next_move();
-    let max_ucb1_child = Rc::clone(tree.borrow().children.get(&best_move).unwrap());
-    recursive_selection(max_ucb1_child)
 }
 
 fn random_rollout<Rules: GameRules>(initial_state: &Rules::State) -> Rewards {
@@ -292,7 +280,7 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
                 );
                 dot_node.attributes.push(attr!("label", node_label));
 
-                if node.borrow().is_fully_explored() {
+                if node.borrow_mut().is_fully_explored() {
                     dot_node.attributes.push(attr!("penwidth", 3));
                 }
 

@@ -91,57 +91,46 @@ impl std::fmt::Debug for TTTState {
     }
 }
 
+fn is_winner(a: &GridCell, b: &GridCell, c: &GridCell) -> Option<TTTPlayer> {
+    if let GridCell::Occupied(p) = a {
+        if a == b && a == c {
+            return Some(p.clone());
+        }
+    }
+
+    None
+}
+
 impl TTTState {
     fn winner(&self) -> Option<TTTPlayer> {
-        // Test rows:
         for row in 0..3 {
-            let candidate = self.board[row][0].clone();
-            match candidate {
-                GridCell::Empty => {
-                    continue;
-                }
-                GridCell::Occupied(player) => {
-                    if self.board[row][1] == GridCell::Occupied(player.clone())
-                        && self.board[row][2] == GridCell::Occupied(player.clone())
-                    {
-                        return Some(player);
-                    }
-                }
+            if let Some(p) = is_winner(
+                &self.board[row][0],
+                &self.board[row][1],
+                &self.board[row][2],
+            ) {
+                return Some(p);
             }
         }
 
         for col in 0..3 {
-            let candidate = self.board[0][col].clone();
-            match candidate {
-                GridCell::Empty => {
-                    continue;
-                }
-                GridCell::Occupied(player) => {
-                    if self.board[1][col] == GridCell::Occupied(player.clone())
-                        && self.board[2][col] == GridCell::Occupied(player.clone())
-                    {
-                        return Some(player);
-                    }
-                }
+            if let Some(p) = is_winner(
+                &self.board[0][col],
+                &self.board[1][col],
+                &self.board[2][col],
+            ) {
+                return Some(p);
             }
         }
 
         // Top left to down right diagonal
-        if let GridCell::Occupied(player) = self.board[0][0].clone() {
-            if self.board[1][1] == GridCell::Occupied(player.clone())
-                && self.board[2][2] == GridCell::Occupied(player.clone())
-            {
-                return Some(player);
-            }
+        if let Some(p) = is_winner(&self.board[0][0], &self.board[1][1], &self.board[2][2]) {
+            return Some(p);
         }
 
         // Other diagonal
-        if let GridCell::Occupied(player) = self.board[0][2].clone() {
-            if self.board[1][1] == GridCell::Occupied(player.clone())
-                && self.board[2][0] == GridCell::Occupied(player.clone())
-            {
-                return Some(player);
-            }
+        if let Some(p) = is_winner(&self.board[0][2], &self.board[1][1], &self.board[2][0]) {
+            return Some(p);
         }
 
         None

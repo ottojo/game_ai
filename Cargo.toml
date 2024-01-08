@@ -1,5 +1,5 @@
 [workspace]
-members = ["hexxagon", "mcts", "game_ai", "random_ai", "tic_tac_toe"]
+members = ["hexxagon", "mcts", "game_ai", "random_ai", "tic_tac_toe", "hexxagon_lib"]
 resolver = "2"
 
 

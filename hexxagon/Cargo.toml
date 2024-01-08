@@ -5,11 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-name = "hexxagonlib"
-path = "src/lib.rs"
-bench = false
-
 [[bin]]
 name = "hexxagon"
 path = "src/bin.rs"
@@ -24,15 +19,8 @@ bench = false
 ggez = "0.9.3"
 rand = "0.8.5"
 indicatif = "0.17.7"
-smallvec = "1.11.2"
 itertools = "0.12.0"
 game_ai = { path = "../game_ai" }
 mcts = { path = "../mcts" }
 random_ai = { path = "../random_ai" }
-
-[dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
-
-[[bench]]
-name = "ai_benchmark"
-harness = false
+hexxagon_lib = { path = "../hexxagon_lib" }
