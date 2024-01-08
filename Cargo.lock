@@ -1231,6 +1231,7 @@ version = "0.1.0"
 dependencies = [
  "game_ai",
  "rand",
+ "rustc-hash",
  "smallvec",
 ]
 
@@ -1653,6 +1654,7 @@ dependencies = [
  "hexxagon_lib",
  "itertools 0.12.0",
  "rand",
+ "rustc-hash",
  "tic_tac_toe",
 ]
 

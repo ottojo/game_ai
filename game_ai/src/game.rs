@@ -42,14 +42,15 @@ pub enum PlayerIndex {
     Zero,
     One,
 }
-impl Into<usize> for PlayerIndex {
-    fn into(self) -> usize {
-        match self {
+impl From<PlayerIndex> for usize {
+    fn from(val: PlayerIndex) -> Self {
+        match val {
             PlayerIndex::Zero => 0,
             PlayerIndex::One => 1,
         }
     }
 }
+
 impl PlayerIndex {
     pub fn opponent(&self) -> PlayerIndex {
         match self {

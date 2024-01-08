@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 pub trait CellTypeTrait: Clone {}
 impl<T: Clone> CellTypeTrait for T {}
@@ -6,7 +6,7 @@ impl<T: Clone> CellTypeTrait for T {}
 #[derive(Clone)]
 pub struct HexGrid<CellType: CellTypeTrait> {
     size: i32,
-    storage: HashMap<AxialVector, CellType>,
+    storage: FxHashMap<AxialVector, CellType>,
 }
 
 impl<CellType: CellTypeTrait> HexGrid<CellType> {
@@ -35,7 +35,7 @@ impl<CellType: CellTypeTrait> HexGrid<CellType> {
         // Row length is (2*size+1)-abs(r)
         // Row starts with item q=max(-size,-size-r)
 
-        let mut map = HashMap::new();
+        let mut map = FxHashMap::default();
         map.insert(AxialVector::new(0, 0), value.clone());
         for ring_radius in 1..size {
             let mut hex: AxialVector = ring_radius * AxialVector::direction(4);

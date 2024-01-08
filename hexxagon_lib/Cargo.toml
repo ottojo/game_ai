@@ -13,3 +13,4 @@ bench = false
 smallvec = "1.11.2"
 rand = "0.8.5"
 game_ai = { path = "../game_ai" }
+rustc-hash = "1.1.0"

@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
 use graphviz_rust::dot_structures::Graph;
@@ -9,6 +8,7 @@ use game_ai::{GameAi, GameRules, GameStateTrait, Rewards};
 
 use graphviz_rust::dot_generator::*;
 use graphviz_rust::dot_structures::*;
+use rustc_hash::FxHashMap;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -75,7 +75,7 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
                 player_1: 0.0,
             },
             playouts_from_here: 0.0,
-            children: HashMap::new(),
+            children: FxHashMap::default(),
             parent: Some(Rc::downgrade(&tree)),
             id: self.next_id,
             fully_explored_cache: false,
@@ -100,7 +100,7 @@ impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
                 player_1: 0.0,
             },
             playouts_from_here: 0.0,
-            children: HashMap::new(),
+            children: FxHashMap::default(),
             parent: None,
             id: 0,
             fully_explored_cache: false,
@@ -135,7 +135,7 @@ struct Tree<Rules: GameRules> {
     state: Rules::State,
     rewards: Rewards,
     playouts_from_here: f32,
-    children: HashMap<Rules::Action, Rc<RefCell<Tree<Rules>>>>,
+    children: FxHashMap<Rules::Action, Rc<RefCell<Tree<Rules>>>>,
     parent: Option<Weak<RefCell<Tree<Rules>>>>,
     id: i32,
     fully_explored_cache: bool,
