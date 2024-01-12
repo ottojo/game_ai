@@ -26,7 +26,7 @@ impl GameRules for HexxagonRules {
         let mut state = initial_state.clone();
         while !state.is_final() {
             let random_move = sample_valid_move(&state);
-            state = Self::play(&state, &random_move);
+            state.player_move(random_move.src, random_move.dst);
         }
 
         state.reward()

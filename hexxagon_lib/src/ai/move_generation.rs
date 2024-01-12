@@ -55,7 +55,6 @@ pub fn sample_valid_move(gamestate: &GameState) -> HexxagonMove {
 
         // Collect possible destinations
         let mut possible_destinations = SmallVec::<[AxialVector; 18]>::new();
-        //let mut possible_destinations = Vec::new();
 
         for move_vec in POSSIBLE_MOVES {
             let hex = selected_source.unwrap() + move_vec;

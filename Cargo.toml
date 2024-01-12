@@ -1,7 +1,16 @@
 [workspace]
-members = ["hexxagon", "mcts", "game_ai", "random_ai", "tic_tac_toe", "hexxagon_lib"]
+members = [
+    "hexxagon",
+    "mcts",
+    "game_ai",
+    "random_ai",
+    "tic_tac_toe",
+    "hexxagon_lib",
+]
 resolver = "2"
 
 
 [profile.release]
 debug = true
+codegen-units = 1
+lto = "thin"
