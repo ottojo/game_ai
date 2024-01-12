@@ -209,21 +209,8 @@ fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell
     }
 }
 
-fn random_rollout<Rules: GameRules>(initial_state: &Rules::State) -> Rewards {
-    let mut state: Rules::State = initial_state.clone();
-    while !state.is_final() {
-        let all_possible_actions = state.get_actions();
-        let random_action = all_possible_actions
-            .choose(&mut rand::thread_rng())
-            .expect("Rollout failed, no actions possible!");
-        state = Rules::play(&state, random_action);
-    }
-
-    state.reward()
-}
-
 fn rollout<Rules: GameRules>(tree: Rc<RefCell<Tree<Rules>>>) -> Rewards {
-    return random_rollout::<Rules>(&tree.borrow().state);
+    return Rules::random_rollout(&tree.borrow().state);
 }
 
 fn backup<Rules: GameRules>(child: Rc<RefCell<Tree<Rules>>>, result: Rewards) {

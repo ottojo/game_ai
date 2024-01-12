@@ -1,4 +1,7 @@
-use crate::ai::{move_generation, HexxagonMove};
+use crate::ai::{
+    move_generation::{self, sample_valid_move},
+    HexxagonMove,
+};
 
 use game_ai::{GameRules, GameStateTrait, PlayerIndex, Rewards};
 
@@ -17,6 +20,16 @@ impl GameRules for HexxagonRules {
         let mut new_state = initial_state.clone();
         new_state.player_move(action.src, action.dst);
         new_state
+    }
+
+    fn random_rollout(initial_state: &Self::State) -> Rewards {
+        let mut state = initial_state.clone();
+        while !state.is_final() {
+            let random_move = sample_valid_move(&state);
+            state = Self::play(&state, &random_move);
+        }
+
+        state.reward()
     }
 }
 
@@ -60,14 +73,3 @@ impl Default for GameState {
         Self::initialize()
     }
 }
-
-/*
-impl From<Player> for PlayerIndex {
-    fn from(value: Player) -> Self {
-        match value {
-            Player::Rubies => PlayerIndex::Zero,
-            Player::Pearls => PlayerIndex::One,
-        }
-    }
-}
-*/

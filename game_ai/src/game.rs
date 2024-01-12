@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+
 pub trait GameStateTrait<Action>: Default + Clone + core::fmt::Debug {
     fn is_final(&self) -> bool;
 
@@ -66,6 +68,20 @@ pub trait GameRules {
     const N_PLAYERS: u32;
 
     fn play(initial_state: &Self::State, action: &Self::Action) -> Self::State;
+
+    // Play game until completion from a given state
+    fn random_rollout(initial_state: &Self::State) -> Rewards {
+        let mut state: Self::State = initial_state.clone();
+        while !state.is_final() {
+            let all_possible_actions = state.get_actions();
+            let random_action = all_possible_actions
+                .choose(&mut rand::thread_rng())
+                .expect("Rollout failed, no actions possible!");
+            state = Self::play(&state, random_action);
+        }
+
+        state.reward()
+    }
 }
 
 #[cfg(test)]
