@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use game_ai::GameAi;
 use ggez::glam::Vec2;
 use hexxagon_lib::ai::HexxagonEvaluator;
@@ -217,11 +219,18 @@ impl event::EventHandler<ggez::GameError> for MainState {
                 let player_move_result = self.gamestate.player_move(source, axial_coordinate); // TODO: Display result
 
                 if self.gamestate.result().is_none() && player_move_result == MoveResult::Success {
+                    let start = Instant::now();
                     let ai_move = self.ai.determine_next_move(&self.gamestate);
+                    let duration = start.elapsed();
                     let ai_move_result = self.gamestate.player_move(ai_move.src, ai_move.dst);
                     assert_eq!(ai_move_result, MoveResult::Success);
 
-                    println!("AI ({}) made move: {:?}", self.ai.name(), ai_move,)
+                    println!(
+                        "AI ({}) made move: {:?} ({:?})",
+                        self.ai.name(),
+                        ai_move,
+                        duration
+                    )
                 }
 
                 UIState::SelectingSource

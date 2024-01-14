@@ -36,7 +36,7 @@ fn main() {
     let create_rubies_ai = || MiniMax::new(3, HexxagonEvaluator {});
     let create_pearls_ai = || {
         GenericMonteCarloTreeSearchAi::<HexxagonRules>::new(mcts::StopCondition::Time(
-            Duration::from_millis(100),
+            Duration::from_millis(1000),
         ))
     };
 
