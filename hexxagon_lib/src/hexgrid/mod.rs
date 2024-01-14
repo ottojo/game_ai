@@ -57,7 +57,6 @@ impl<CellType: CellTypeTrait> HexGrid<CellType> {
     }
 }
 
-#[allow(unused)]
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct AxialVector {
     q: i32,

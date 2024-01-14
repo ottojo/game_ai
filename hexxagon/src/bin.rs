@@ -239,6 +239,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
 fn main() -> ggez::GameResult {
     let cb = ggez::ContextBuilder::new("hexxagon", "ottojo");
     let (ctx, event_loop) = cb.build()?;
+    ctx.gfx.set_window_title("Hexxagon");
     let state = MainState::new();
     event::run(ctx, event_loop, state)
 }
