@@ -6,6 +6,7 @@ members = [
     "random_ai",
     "tic_tac_toe",
     "hexxagon_lib",
+    "minimax",
 ]
 resolver = "2"
 

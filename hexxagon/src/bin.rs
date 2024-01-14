@@ -1,9 +1,6 @@
-use std::time::Duration;
-
 use game_ai::GameAi;
 use ggez::glam::Vec2;
-use mcts::GenericMonteCarloTreeSearchAi;
-//use hexxagon_lib::ai::HexxagonAi;
+use hexxagon_lib::ai::HexxagonEvaluator;
 use hexxagon_lib::game::CellState;
 use hexxagon_lib::game::GameResult;
 use hexxagon_lib::game::GameState;
@@ -19,6 +16,7 @@ use hexxagon_lib::game::rules::HexxagonRules;
 use hexxagon_lib::hexgrid::AxialVector;
 
 use hexxagon_lib::game::MoveResult;
+use minimax::MiniMax;
 
 enum UIState {
     SelectingSource,
@@ -42,9 +40,7 @@ impl MainState {
             cell_size: 40.0,
             cell_aspect_ratio: 0.5,
             board_position: Vec2::new(0.0, 0.0),
-            ai: Box::new(GenericMonteCarloTreeSearchAi::<HexxagonRules>::new(
-                mcts::StopCondition::Time(Duration::from_millis(5000)),
-            )),
+            ai: Box::new(MiniMax::new(3, HexxagonEvaluator {})),
         }
     }
 }
@@ -225,7 +221,7 @@ impl event::EventHandler<ggez::GameError> for MainState {
                     let ai_move_result = self.gamestate.player_move(ai_move.src, ai_move.dst);
                     assert_eq!(ai_move_result, MoveResult::Success);
 
-                    println!("AI made move: {:?}", ai_move)
+                    println!("AI ({}) made move: {:?}", self.ai.name(), ai_move,)
                 }
 
                 UIState::SelectingSource

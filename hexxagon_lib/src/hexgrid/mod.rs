@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 pub trait CellTypeTrait: Clone {}
 impl<T: Clone> CellTypeTrait for T {}
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct HexGrid<CellType: CellTypeTrait> {
     size: i32,
     storage: FxHashMap<AxialVector, CellType>,

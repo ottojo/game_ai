@@ -60,6 +60,13 @@ impl PlayerIndex {
             PlayerIndex::One => PlayerIndex::Zero,
         }
     }
+
+    pub fn is_maximizing(&self) -> bool {
+        match self {
+            PlayerIndex::Zero => true,
+            PlayerIndex::One => false,
+        }
+    }
 }
 
 pub trait GameRules {

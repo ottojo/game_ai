@@ -24,3 +24,4 @@ game_ai = { path = "../game_ai" }
 mcts = { path = "../mcts" }
 random_ai = { path = "../random_ai" }
 hexxagon_lib = { path = "../hexxagon_lib" }
+minimax = { path = "../minimax" }

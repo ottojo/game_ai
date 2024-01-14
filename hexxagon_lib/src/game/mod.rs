@@ -52,7 +52,7 @@ pub struct Scores {
     pub pearls: i32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct GameState {
     next_move: Player,
     field: HexGrid<CellState>,

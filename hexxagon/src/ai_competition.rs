@@ -1,10 +1,13 @@
 use std::time::Duration;
 
 use game_ai::GameAi;
-use hexxagon_lib::game::{self, rules::HexxagonRules, GameResult, GameState, MoveResult, Player};
+use hexxagon_lib::{
+    ai::HexxagonEvaluator,
+    game::{self, rules::HexxagonRules, GameResult, GameState, MoveResult, Player},
+};
 use indicatif::ProgressIterator;
 use mcts::GenericMonteCarloTreeSearchAi;
-use random_ai::RandomAi;
+use minimax::MiniMax;
 
 fn play_game<PearlsAI: GameAi<HexxagonRules>, RubiesAI: GameAi<HexxagonRules>>(
     mut pearls_ai: PearlsAI,
@@ -27,18 +30,19 @@ fn play_game<PearlsAI: GameAi<HexxagonRules>, RubiesAI: GameAi<HexxagonRules>>(
 }
 
 fn main() {
-    let mut pearls_wins = 0;
     let mut rubies_wins = 0;
+    let mut pearls_wins = 0;
 
+    let create_rubies_ai = || MiniMax::new(3, HexxagonEvaluator {});
     let create_pearls_ai = || {
         GenericMonteCarloTreeSearchAi::<HexxagonRules>::new(mcts::StopCondition::Time(
             Duration::from_millis(100),
         ))
     };
-    let create_rubies_ai = || RandomAi {};
 
     for _i in (0..20).progress() {
         let game_result = play_game(create_pearls_ai(), create_rubies_ai());
+        println!("{:?}", game_result);
         match game_result {
             GameResult::Tie => {}
             GameResult::Win(Player::Rubies) => rubies_wins += 1,

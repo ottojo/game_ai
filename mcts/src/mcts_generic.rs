@@ -22,6 +22,7 @@ pub struct GenericMonteCarloTreeSearchAi<Rules: GameRules> {
     stop_condition: StopCondition,
     last_tree: Rc<RefCell<Tree<Rules>>>,
     next_id: i32,
+    c: f32,
 }
 
 impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
@@ -30,11 +31,12 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
             stop_condition,
             last_tree: Default::default(),
             next_id: 1,
+            c: 2.0f32.sqrt(),
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StopCondition {
     Iterations(usize),
     Time(Duration),
@@ -42,7 +44,7 @@ pub enum StopCondition {
 
 impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
     fn do_mcts_iteration(&mut self, tree: Rc<RefCell<Tree<Rules>>>) {
-        let selected_node = selection(tree);
+        let selected_node = selection(tree, self.c);
         let new_child = self.expansion(selected_node);
         let result = rollout(Rc::clone(&new_child));
         new_child.borrow_mut().rewards += &result;
@@ -120,13 +122,13 @@ impl<Rules: GameRules> GameAi<Rules> for GenericMonteCarloTreeSearchAi<Rules> {
             }
         }
 
-        let best_move = self.last_tree.borrow().select_best_next_move();
+        let best_move = self.last_tree.borrow().select_best_next_move(self.c);
 
         best_move
     }
 
     fn name(&self) -> String {
-        "Generic Monte Carlo tree search".into()
+        format!("MCTS ({:?})", self.stop_condition)
     }
 }
 
@@ -169,9 +171,8 @@ impl<Rules: GameRules> Tree<Rules> {
     }
 
     /// Selects child with max UCB1 score
-    fn select_best_next_move(&self) -> Rules::Action {
+    fn select_best_next_move(&self, c: f32) -> Rules::Action {
         assert!(!self.children.is_empty());
-        let c = 1.0;
         let parent_playouts = self.playouts_from_here;
         let player = self.state.next_player();
         let ucb1 = |child: &Rc<RefCell<Tree<Rules>>>| -> f32 {
@@ -191,7 +192,10 @@ impl<Rules: GameRules> Tree<Rules> {
     }
 }
 
-fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell<Tree<Rules>>> {
+fn selection<Rules: GameRules>(
+    mut tree: Rc<RefCell<Tree<Rules>>>,
+    c: f32,
+) -> Rc<RefCell<Tree<Rules>>> {
     // Select node to expand by tree policy, in this case recursively max UCB1 value
     loop {
         if tree.borrow().state.is_final() {
@@ -203,7 +207,7 @@ fn selection<Rules: GameRules>(mut tree: Rc<RefCell<Tree<Rules>>>) -> Rc<RefCell
         }
 
         // Choose child with max UCB1 score
-        let best_move = tree.borrow().select_best_next_move();
+        let best_move = tree.borrow().select_best_next_move(c);
         let max_ucb1_child = Rc::clone(tree.borrow().children.get(&best_move).unwrap());
         tree = max_ucb1_child;
     }
@@ -251,12 +255,12 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
                     .parent
                     .as_ref()
                     .map(|parent| parent.upgrade().unwrap().borrow().playouts_from_here);
-                let c = 1.0;
                 let incoming_player = node.borrow().state.incoming_player();
                 let ucb1 = parent_playouts.map(|parent_playouts| {
                     node.borrow().rewards.for_player(&incoming_player)
                         / node.borrow().playouts_from_here
-                        + c * (2.0 * parent_playouts.ln() / node.borrow().playouts_from_here).sqrt()
+                        + self.c
+                            * (2.0 * parent_playouts.ln() / node.borrow().playouts_from_here).sqrt()
                 });
 
                 let node_label = format!(
@@ -307,5 +311,53 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
         }
 
         graph
+    }
+
+    pub fn tree_size(&self) -> usize {
+        self.last_tree.borrow().tree_size()
+    }
+
+    pub fn tree_depth(&self) -> usize {
+        self.last_tree.borrow().max_depth()
+    }
+
+    pub fn tree_branching_factor(&self) -> f32 {
+        self.last_tree.borrow().average_branching_factor()
+    }
+}
+
+impl<Rules: GameRules> Tree<Rules> {
+    fn tree_size(&self) -> usize {
+        1 + self
+            .children
+            .values()
+            .map(|child| child.borrow().tree_size())
+            .sum::<usize>()
+    }
+
+    fn leaf_nodes_count(&self) -> usize {
+        if self.children.is_empty() {
+            1
+        } else {
+            self.children
+                .values()
+                .map(|child| child.borrow().leaf_nodes_count())
+                .sum::<usize>()
+        }
+    }
+
+    fn average_branching_factor(&self) -> f32 {
+        let tree_size = self.tree_size();
+        let non_leaf_nodes = tree_size - self.leaf_nodes_count();
+        (tree_size - 1) as f32 / non_leaf_nodes as f32
+    }
+
+    fn max_depth(&self) -> usize {
+        1 + self
+            .children
+            .values()
+            .map(|child| child.borrow().max_depth())
+            .max()
+            .unwrap_or(0)
     }
 }

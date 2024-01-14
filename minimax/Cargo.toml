@@ -1,0 +1,22 @@
+[package]
+name = "minimax"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+game_ai = { path = "../game_ai" }
+rustc-hash = "1.1.0"
+rayon = "1.8.0"
+
+[dev-dependencies]
+hexxagon_lib = { path = "../hexxagon_lib" }
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[lib]
+bench = false
+
+[[bench]]
+name = "minimax_benchmark"
+harness = false
