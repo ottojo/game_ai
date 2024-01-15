@@ -12,6 +12,7 @@ pub struct HexxagonMove {
     pub dst: AxialVector,
 }
 
+#[derive(Clone)]
 pub struct HexxagonEvaluator {}
 
 impl Evaluator for HexxagonEvaluator {

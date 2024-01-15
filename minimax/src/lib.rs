@@ -1,16 +1,18 @@
 use game_ai::{Evaluator, GameAi, GameRules, GameStateTrait};
-pub struct MiniMax<Eval: Evaluator> {
+
+#[derive(Clone)]
+pub struct MiniMax<Eval: Evaluator + Clone> {
     evaluator: Eval,
     depth: usize,
 }
 
-impl<Eval: Evaluator> MiniMax<Eval> {
+impl<Eval: Evaluator + Clone> MiniMax<Eval> {
     pub fn new(depth: usize, evaluator: Eval) -> MiniMax<Eval> {
         MiniMax { depth, evaluator }
     }
 }
 
-impl<Eval: Evaluator> GameAi<Eval::Rules> for MiniMax<Eval> {
+impl<Eval: Evaluator + Clone> GameAi<Eval::Rules> for MiniMax<Eval> {
     fn determine_next_move(
         &mut self,
         gamestate: &<Eval::Rules as GameRules>::State,

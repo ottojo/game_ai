@@ -15,10 +15,6 @@ use itertools::Itertools;
 
 #[derive(Clone)]
 pub struct GenericMonteCarloTreeSearchAi<Rules: GameRules> {
-    // TODO: should MCTS be a trait???
-
-    // TODO: Persist tree
-    // tree: Rc<RefCell<Tree>>,
     stop_condition: StopCondition,
     last_tree: Rc<RefCell<Tree<Rules>>>,
     next_id: i32,
@@ -32,6 +28,18 @@ impl<Rules: GameRules> GenericMonteCarloTreeSearchAi<Rules> {
             last_tree: Default::default(),
             next_id: 1,
             c: 2.0f32.sqrt(),
+        }
+    }
+
+    pub fn new_with_c(
+        stop_condition: StopCondition,
+        c: f32,
+    ) -> GenericMonteCarloTreeSearchAi<Rules> {
+        GenericMonteCarloTreeSearchAi {
+            stop_condition,
+            last_tree: Default::default(),
+            next_id: 1,
+            c,
         }
     }
 }
